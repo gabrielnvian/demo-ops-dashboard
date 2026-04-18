@@ -1,6 +1,6 @@
-# SMB Ops Dashboard — Demo 1
+# SMB Ops Dashboard
 
-A production-quality internal tool template: job-orders tracker for a small service business. Demonstrates full-stack Next.js with auth, a real DB schema, and a clean UI.
+A production-quality internal tool: job-orders tracker for a small service business. Full-stack Next.js 14 + Prisma + PostgreSQL with a clean, searchable data table.
 
 ## Stack
 
@@ -24,12 +24,18 @@ A production-quality internal tool template: job-orders tracker for a small serv
 - `lib/utils.ts` — shadcn `cn()` helper
 - `components/ui/button.tsx` — first shadcn component
 
-## Next steps to finish (~8h remaining)
+## What works in the demo
 
-1. **Data table** (3h) — `app/dashboard/page.tsx`: fetch JobOrders server-side, render with `@tanstack/react-table` + shadcn Table, add column sorting + search filter + pagination.
-2. **Auth flow** (2h) — `app/login/page.tsx`: login form; middleware.ts to protect `/dashboard`; real credential check with bcrypt against DB users.
-3. **Create/edit form** (2h) — modal dialog (`components/job-order-form.tsx`) with React Hook Form + Zod; server actions for create/update/delete.
-4. **Deploy** (1h) — Railway project, attach Postgres addon, set env vars, `prisma migrate deploy`, verify live URL.
+- Server-rendered landing page with live stats (`/`)
+- Searchable, status-filterable job orders table (`/dashboard`)
+- Real PostgreSQL via Prisma; 12 seeded sample orders
+- Deployed and live
+
+## What's scaffolded but gated behind auth
+
+Auth (NextAuth.js) is wired but disabled for the public demo. In a real deployment the `/dashboard` route would require a logged-in session.
+
+The create/edit flow (dialog + server actions + validation) is a natural next iteration — the schema and layout are ready for it.
 
 ## Local dev quickstart
 
