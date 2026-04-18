@@ -14,18 +14,18 @@ const customers = [
 ];
 
 const titles = [
-  "Replace condenser unit — main building",
+  "Replace condenser unit  -  main building",
   "Quarterly maintenance inspection",
   "Diagnose intermittent tripping breaker",
   "Install 3 new ceiling fixtures",
-  "Emergency leak repair — kitchen",
+  "Emergency leak repair  -  kitchen",
   "Water heater replacement (50gal)",
   "Annual service contract renewal",
   "New install: backup generator",
   "Fence repair after storm",
   "Spring irrigation startup",
   "Roof inspection + 2 shingle replacement",
-  "Clean gutters — full property",
+  "Clean gutters  -  full property",
 ];
 
 const statuses: JobStatus[] = [
@@ -37,14 +37,14 @@ const statuses: JobStatus[] = [
 
 const notes = [
   "Customer requested morning arrival window.",
-  "Gate code 4412. Dogs on property — friendly.",
+  "Gate code 4412. Dogs on property  -  friendly.",
   null,
   "Parts ordered; ETA 2 business days.",
-  "Urgent — customer is without heat.",
+  "Urgent  -  customer is without heat.",
   null,
   "Discuss service contract at completion.",
   null,
-  "Second floor access required — lift rental.",
+  "Second floor access required  -  lift rental.",
   "Bill against PO #11283.",
   null,
   "Send invoice to accounting@customer.com.",

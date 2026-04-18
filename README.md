@@ -14,15 +14,15 @@ A production-quality internal tool: job-orders tracker for a small service busin
 
 ## What's here (scaffold)
 
-- `package.json` — all deps pinned; install with `pnpm install`
-- `prisma/schema.prisma` — `JobOrder` model + NextAuth tables (`User`, `Account`, `Session`)
-- `app/layout.tsx` + `app/page.tsx` — landing page
-- `app/dashboard/page.tsx` — placeholder for the data table
-- `app/api/auth/[...nextauth]/route.ts` — NextAuth API route
-- `lib/prisma.ts` — singleton Prisma client (dev-safe)
-- `lib/auth.ts` — NextAuth config (credentials provider placeholder)
-- `lib/utils.ts` — shadcn `cn()` helper
-- `components/ui/button.tsx` — first shadcn component
+- `package.json`  -  all deps pinned; install with `pnpm install`
+- `prisma/schema.prisma`  -  `JobOrder` model + NextAuth tables (`User`, `Account`, `Session`)
+- `app/layout.tsx` + `app/page.tsx`  -  landing page
+- `app/dashboard/page.tsx`  -  placeholder for the data table
+- `app/api/auth/[...nextauth]/route.ts`  -  NextAuth API route
+- `lib/prisma.ts`  -  singleton Prisma client (dev-safe)
+- `lib/auth.ts`  -  NextAuth config (credentials provider placeholder)
+- `lib/utils.ts`  -  shadcn `cn()` helper
+- `components/ui/button.tsx`  -  first shadcn component
 
 ## What works in the demo
 
@@ -35,7 +35,7 @@ A production-quality internal tool: job-orders tracker for a small service busin
 
 Auth (NextAuth.js) is wired but disabled for the public demo. In a real deployment the `/dashboard` route would require a logged-in session.
 
-The create/edit flow (dialog + server actions + validation) is a natural next iteration — the schema and layout are ready for it.
+The create/edit flow (dialog + server actions + validation) is a natural next iteration  -  the schema and layout are ready for it.
 
 ## Local dev quickstart
 
