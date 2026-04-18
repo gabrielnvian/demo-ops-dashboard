@@ -57,8 +57,8 @@ export default async function Home() {
         </div>
 
         <p className="mt-16 text-xs text-slate-500">
-          This is a public demo. Authentication is disabled for browsing  - 
-          production would gate behind NextAuth.js (scaffolded in the repo).
+          This is a public demo. Authentication is disabled for browsing.
+          In production, the dashboard would gate behind NextAuth.js (scaffolded in the repo).
         </p>
       </div>
     </main>

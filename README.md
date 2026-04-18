@@ -1,5 +1,7 @@
 # SMB Ops Dashboard
 
+**Live demo: https://solomon.tail068f9.ts.net/**
+
 A production-quality internal tool: job-orders tracker for a small service business. Full-stack Next.js 14 + Prisma + PostgreSQL with a clean, searchable data table.
 
 ## Stack

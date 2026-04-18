@@ -18,7 +18,7 @@ const statusLabels: Record<string, string> = {
 };
 
 function fmtDate(d: Date | null): string {
-  if (!d) return "\u2014";
+  if (!d) return "-";
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
