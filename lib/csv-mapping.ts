@@ -1,6 +1,8 @@
 import { JobStatus } from "@prisma/client";
 
+/** Maximum number of data rows accepted from a single CSV upload. */
 export const MAX_ROWS = 500;
+/** Maximum byte size accepted from a single CSV upload (5 MB). */
 export const MAX_BYTES = 5 * 1024 * 1024;
 
 const TITLE_KEYS = ["title", "order", "job", "name", "description"];
@@ -41,6 +43,18 @@ export type MappedRow = {
   notes: string | null;
 };
 
+/**
+ * Map a raw CSV row (header keys to string values) into a JobOrder shape.
+ *
+ * Column headers are matched case-insensitively and tolerate whitespace,
+ * underscores, and hyphens (so `due date`, `Due_Date`, and `due-date` all map
+ * to `dueAt`). Status values are normalized against the Prisma `JobStatus`
+ * enum and default to `PENDING` when unrecognized. Unknown columns with a
+ * non-empty value are preserved as `Key: value` lines appended to notes.
+ *
+ * @param row plain object of header name to cell string
+ * @returns the mapped row, or `null` if no title-like column was found
+ */
 export function mapRow(row: Record<string, string>): MappedRow | null {
   let title = "";
   let customer = "";
