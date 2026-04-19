@@ -61,11 +61,24 @@ IN_PROGRESS / COMPLETED / CANCELLED), notes, dueAt, createdAt, updatedAt.
 
 - `/` server-rendered landing with live counts from Postgres.
 - `/dashboard` searchable, status-filterable table against a real
-  PostgreSQL instance via Prisma.
+  PostgreSQL instance via Prisma. Seed rows are SSR&apos;d from Postgres;
+  per-visitor uploads and manual entries are hydrated from the browser's
+  localStorage on mount.
+- `/upload` drag-and-drop CSV import. The server parses and maps columns,
+  the browser saves the mapped rows to localStorage.
 - NextAuth configured but disabled for the public demo; the `/dashboard`
   route would gate behind a session in production.
-- Create and edit flows are scaffolded (dialog + server actions) but
-  disabled on the public demo.
+
+### Public demo storage
+
+Uploaded rows and rows created via the `+ New order` button live only in
+your browser's localStorage. They do not leave your machine. The seed
+rows you see are SSR'd from a shared Postgres instance. In production,
+the upload path writes to the same Postgres the seed reads from, behind
+a signed-in session. Running the write path client-side for the public
+demo removes the need for per-visitor session scoping, TTL cron sweeps,
+and cross-visitor content filtering, because there is no shared write
+surface.
 
 ### Local dev
 

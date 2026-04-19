@@ -25,9 +25,9 @@ What they actually need is boring. A single source of truth for job orders. Stat
 The live demo is the shape of the deliverable. Four surfaces:
 
 1. **Landing page (`/`).** Outcome-first hero, what you get, who it is for, how the two weeks break down, live counts pulled from Postgres so nothing on the page is static marketing. `{screenshot: landing-hero}`
-2. **Dashboard (`/dashboard`).** Server-rendered table of job orders, full-text search across title, customer, and notes, status filter with live counts per status, status badges, a disabled "New order" button that shows where the create flow lives. `{screenshot: dashboard-view}`
+2. **Dashboard (`/dashboard`).** Server-rendered table of job orders, full-text search across title, customer, and notes, status filter with live counts per status, status badges, and a "+ New order" inline form that writes to the visitor's browser. `{screenshot: dashboard-view}`
 3. **Upload page (`/upload`).** Drag-and-drop CSV flow. Server parses with papaparse, infers columns, shows a preview of the first rows and what is mappable, then a single "Import" button writes the rows to the same Postgres the dashboard reads from. `{screenshot: upload-preview}`
-4. **For the public demo only:** every uploaded row carries a one-hour TTL. A node-cron sweep runs every fifteen minutes and deletes expired rows. Seeded demo data is persistent; uploaded rows wear an "uploaded" badge and age out on their own. This lets any visitor touch a real insert without the demo becoming a graveyard of other people's data.
+4. **For the public demo only:** uploaded rows and rows created via the "+ New order" button are scoped to the visitor's browser. They are written to localStorage by the client, merged into the dashboard on mount, and never travel over the network after the initial parse. Seeded demo data is persistent in Postgres; uploaded rows wear an "uploaded" badge. This lets any visitor touch a real insert without the demo becoming a graveyard of other people's data, and without standing up per-visitor session scoping or a TTL cron on the server.
 
 What the demo is not: an auth-gated production app. NextAuth is scaffolded (User, Account, Session tables, credentials provider wired) but the gate is open on the public deploy so a visitor can actually use it. In a real client engagement this flips on in the first hour of week two and nobody except signed-in staff hits `/dashboard` again.
 
@@ -49,7 +49,6 @@ model JobOrder {
   dueAt      DateTime?
   notes      String?       @db.Text
   updatedAt  DateTime      @updatedAt
-  expiresAt  DateTime?
 }
 
 enum JobStatus {
@@ -70,7 +69,7 @@ A few choices worth calling out, because they matter more than they look:
 
 **`createdAt` and `updatedAt` are automatic.** Prisma populates both. The "who changed this last" question is out of scope for a two-week engagement; an audit log is a real-client feature and gets called out in "what I skipped" below. But `updatedAt` alone makes it possible to ask "what rows moved today" without any extra wiring.
 
-**`expiresAt` is nullable and only set on uploaded rows.** This is the one piece of demo-scaffolding that leaks into the schema, and I accept it. In a real engagement this column is either gone on day one or repurposed for soft-delete. On the public demo it is what makes the upload flow safe to expose to strangers.
+**The schema is clean.** No demo-only columns leak in. The public demo keeps uploaded rows in the visitor's browser via localStorage rather than adding a TTL column to the shared table, so the schema shown to tech evaluators is the same schema a real client engagement starts from.
 
 By end of day three the mock is running: same schema, seeded with twelve job orders in four statuses across eight plausible customers, sample titles that look like real field work ("replace condenser unit - main building," "diagnose intermittent tripping breaker," "emergency leak repair - kitchen"). The scheduler can open the dashboard and see something that feels like her week. This is the moment where scope either holds or moves. If she squints at the seeded data and says "we also need to track which tech is assigned, and whether it billed," that's a week-one conversation, not a week-two surprise, and I still have four days before a line of production code gets written.
 
@@ -103,11 +102,11 @@ If you are evaluating me against Retool, Airtable, or Monday, I am not trying to
 The flow on the public demo:
 
 1. Visitor drops a CSV on `/upload` (drag-and-drop or file picker). Max 5 MB, max 500 rows.
-2. The browser POSTs the file to `/api/upload`, which runs server-side (`runtime = "nodejs"`), parses with papaparse, infers columns, and returns a preview of the first three rows plus how many rows are mappable to the JobOrder schema.
+2. The browser POSTs the file to `/api/upload`, which runs server-side (`runtime = "nodejs"`), parses with papaparse, infers columns, maps each row against the `JobOrder` shape, and returns both the preview and the fully mapped rows. The endpoint is stateless; no database writes on the server path.
 3. The UI shows the detected columns and a small preview table. The user sees, before committing, whether the mapping looks right.
-4. On confirm, the browser POSTs the parsed rows to `/api/upload/commit`. That endpoint re-runs the mapper (never trust client-side sanitization), stamps each row with `expiresAt = now + 1h`, and writes inside a Prisma transaction.
-5. The dashboard redirects with a success banner, and the new rows appear alongside seeded rows with an "uploaded" badge so the visitor can tell them apart.
-6. Every 15 minutes, a node-cron job in the server process deletes any row whose `expiresAt` is in the past. The demo stays clean; seeded data stays forever because it has `expiresAt: null`.
+4. On confirm, the browser sanitizes each row (length caps, strip control characters, refuse `<script>`/`<iframe>`) and writes the batch to `localStorage` under a single key. Each row gets a client-generated UUID and an ISO `createdAt`.
+5. The dashboard redirects with a success banner. Seed rows are rendered server-side from Postgres; the client hydrates the localStorage rows on mount, merges them with the seed rows, and renders the "uploaded" badge so the visitor can tell them apart.
+6. There is no cron. There is no shared write state. A second visitor sees exactly the seeded twelve rows, no more, no less, because the first visitor's data lives only in the first visitor's browser. In a real engagement this flips: the same `/api/upload` handler would write directly to Postgres behind a signed-in session, and the localStorage detour goes away.
 
 The mapping logic is the piece that makes the feature feel magic. Customer spreadsheets do not use clean column names. They have "Order," "Job Name," "Description," "customer," "Client," "Company." The mapper normalizes, matches against a small set of synonyms per field, and falls back gracefully:
 
@@ -131,25 +130,27 @@ function keyMatches(raw: string, candidates: string[]): boolean {
 
 A row is valid if it produces a title. Unmatched columns do not get dropped; they get folded into `notes` as `key: value` lines, which is how I keep the "I know my spreadsheet has a column you did not think about" case from silently losing data. A dispatcher's idiosyncratic "route" or "van" or "crew" column ends up in the notes field rather than thrown away. That detail alone is why the "looks right?" preview works: the visitor sees every column accounted for.
 
-The expiry cron boots in-process on server start via the Next.js `instrumentation.ts` hook, so the schedule starts running the moment the server does, no external scheduler needed:
+The local-storage helpers are a thin module; the interesting part is what this removes:
 
 ```ts
-// lib/expiry-cleanup.ts (excerpt)
-export function startExpiryCleanup() {
-  if (started) return;
-  started = true;
-  // every 15 minutes
-  cron.schedule("*/15 * * * *", () => {
-    void sweep();
-  });
-  // run once at boot so stale rows do not linger across restarts
-  void sweep();
+// lib/local-orders.ts (excerpt)
+export function addLocalOrder(
+  order: Omit<LocalOrder, "id" | "createdAt">
+): LocalOrder {
+  assertClient("addLocalOrder");
+  const full: LocalOrder = {
+    ...order,
+    id: randomId(),
+    createdAt: new Date().toISOString(),
+  };
+  addLocalOrders([full]);
+  return full;
 }
 ```
 
-Booting a sweep immediately at startup matters because the server might have been down when a TTL lapsed; without the immediate call you get stale rows that wait up to fifteen minutes to die. Small detail, noticeable if you do not handle it.
+No TTL column on the schema. No scheduled cron in-process. No per-visitor session scoping on the server. No cross-visitor content filtering. Each of those was a real cost with a real failure mode (stale rows after restart, expired-but-unswept data, visitor-A seeing visitor-B's junk), and all of them existed to solve a problem I created by writing uploads to shared Postgres in the first place. Moving the write path to the browser deletes the problem.
 
-For a real client this whole TTL scaffold disappears. The column comes off the schema; the cron goes away. What stays is the CSV import itself, because "I want to bring in my existing data" is the first thing every new-system client asks on day one of go-live.
+What stays in the server path is the CSV import parser and the column mapper, because "I want to bring in my existing data" is the first thing every new-system client asks on day one of go-live, and that logic is the same whether the destination is localStorage or Postgres. In a real engagement the destination flips. The parser and mapper do not.
 
 `{screenshot: csv-upload-flow}`
 
@@ -159,7 +160,7 @@ For a real client this whole TTL scaffold disappears. The column comes off the s
 
 Honest scope matters more than bragging about scope. Here is what this demo does not do and what I would do about each in a real client engagement.
 
-**No automated tests.** A portfolio demo lives or dies on whether the UI feels solid, and I verify that by hand. A client engagement gets a Vitest suite on the CSV parser (the most error-prone code in the repo), the field-mapping logic (easy to regress as synonyms grow), and the expiry cron (off-by-one errors in date math are a classic). Playwright for the upload-and-see-in-dashboard happy path. I budget a day of week two for tests. They do not go in the demo because the payoff to the non-technical reader is zero.
+**A focused Vitest suite, not a battleship of tests.** The repo ships unit tests for the CSV parser, the column mapper, the sanitization helpers, and the localStorage round-trip. CI runs `pnpm test` on every push. Playwright end-to-end for the upload-and-see-in-dashboard happy path is the next-engagement add; in a client project I budget a day of week two for it. A non-technical reader does not read tests, but a technical evaluator reading this README does check that the tests exist and run green.
 
 **No internationalization.** All copy is English. If you sell into multiple locales, the day-one client conversation is whether we wire next-intl now (it is cheap if we do it before the strings are scattered) or defer (cheap to do later if string inventory stays small). I pick per project based on the roadmap, not by default.
 
@@ -169,7 +170,7 @@ Honest scope matters more than bragging about scope. Here is what this demo does
 
 **No soft-delete.** Right now a deleted row is gone. Adding a `deletedAt` column and filtering it out everywhere is a day of work and a source of bugs for a month afterward. I do not add it unless the client asks, because the teams that need it know they need it and the teams that do not will find it confusing.
 
-**No inline editing on the dashboard.** The demo shows the viewer mode of the table. Inline edit is the first feature I add in a real engagement, usually day six or seven; it is a server action and a client island around each editable cell. The scaffolding is there (the "New order" button is wired to a disabled state in the UI to show where the flow lives) so turning it on is a short exercise, not a rearchitect.
+**No inline editing on the dashboard.** The demo shows the viewer mode of the table. Inline edit is the first feature I add in a real engagement, usually day six or seven; it is a server action and a client island around each editable cell. The "+ New order" form on the public demo is the first step of that flow running against localStorage; wiring it to a server action in a real project is a short exercise, not a rearchitect.
 
 **No file attachments, email notifications, Stripe billing, or webhook integrations.** None of those belong in a two-week starting scope. All of them are day-one conversations for project two.
 
