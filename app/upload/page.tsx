@@ -133,15 +133,19 @@ export default function UploadPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-slate-900">
-      <nav className="border-b border-slate-100">
+    <main id="main-content" className="min-h-screen bg-white text-slate-900">
+      <nav aria-label="Primary" className="border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          <Link href="/" className="text-sm font-semibold tracking-tight">
+          <Link
+            href="/"
+            aria-label="Gabriel Vian, home"
+            className="text-sm font-semibold tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
+          >
             Gabriel Vian
           </Link>
           <Link
             href="/dashboard"
-            className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
+            className="text-xs text-slate-600 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
           >
             View dashboard
           </Link>
@@ -151,14 +155,15 @@ export default function UploadPage() {
       <section className="mx-auto max-w-2xl px-6 pt-16 pb-20">
         <Link
           href="/"
-          className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
+          aria-label="Back to landing page"
+          className="text-xs text-slate-600 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
         >
-          &larr; Back
+          <span aria-hidden="true">&larr;</span> Back
         </Link>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">
           Upload your spreadsheet.
         </h1>
-        <p className="mt-3 text-slate-600 leading-relaxed">
+        <p className="mt-3 text-slate-700 leading-relaxed">
           Drop any CSV of orders, jobs, or tasks. I detect the columns, map
           them to a real schema, and drop the rows into a working admin view.
           On this public demo the rows are saved to your browser only; in
@@ -174,45 +179,54 @@ export default function UploadPage() {
             }}
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
-            onClick={() => inputRef.current?.click()}
-            className={`mt-10 cursor-pointer rounded-lg border-2 border-dashed p-10 text-center transition-colors ${
+            className={`mt-10 rounded-lg border-2 border-dashed transition-colors ${
               dragOver
                 ? "border-slate-900 bg-slate-50"
-                : "border-slate-300 hover:border-slate-500 hover:bg-slate-50"
+                : "border-slate-400 hover:border-slate-600 hover:bg-slate-50"
             }`}
           >
             <input
               ref={inputRef}
+              id="csv-file-input"
               type="file"
               accept=".csv,text/csv"
-              className="hidden"
+              aria-label="Choose a CSV file to upload"
+              className="sr-only"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) void handleFile(file);
               }}
             />
-            <p className="text-sm font-medium text-slate-900">
-              {loading
-                ? "Reading your file..."
-                : "Drop a CSV here, or click to select."}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              Max 5 MB, up to {MAX_ROWS_HINT} rows. .csv only.
-            </p>
-            {fileName && !loading && (
-              <p className="mt-3 text-xs text-slate-600">
-                Selected: {fileName}
-              </p>
-            )}
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              aria-label="Choose a CSV file, or drop one onto this region"
+              aria-describedby="dropzone-hint"
+              className="block w-full cursor-pointer rounded-lg p-10 text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+            >
+              <span className="block text-sm font-medium text-slate-900">
+                {loading
+                  ? "Reading your file..."
+                  : "Drop a CSV here, or click to select."}
+              </span>
+              <span id="dropzone-hint" className="mt-2 block text-xs text-slate-600">
+                Max 5 MB, up to {MAX_ROWS_HINT} rows. .csv only.
+              </span>
+              {fileName && !loading && (
+                <span className="mt-3 block text-xs text-slate-700">
+                  Selected: {fileName}
+                </span>
+              )}
+            </button>
           </div>
         )}
 
         {!preview && (
-          <p className="mt-4 text-xs text-slate-500">
+          <p className="mt-4 text-xs text-slate-600">
             Don&apos;t have a CSV?{" "}
             <a
               href="/sample-orders.csv"
-              className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900"
+              className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
             >
               Try a sample.
             </a>
@@ -220,31 +234,38 @@ export default function UploadPage() {
         )}
 
         {error && (
-          <div className="mt-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div
+            role="alert"
+            aria-live="assertive"
+            className="mt-6 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900"
+          >
             {error}
           </div>
         )}
 
         {preview && (
-          <div className="mt-10 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-base font-semibold text-slate-900">
+          <section
+            aria-labelledby="preview-heading"
+            className="mt-10 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+          >
+            <h2 id="preview-heading" className="text-base font-semibold text-slate-900">
               Looks right?
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-700">
               {preview.rowCount} rows detected from{" "}
               <span className="font-medium text-slate-900">{fileName}</span>.{" "}
               {preview.mappableCount} mappable to job orders.
             </p>
 
             <div className="mt-5">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-700">
                 Detected columns
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {preview.columns.map((c) => (
                   <span
                     key={c}
-                    className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700"
+                    className="inline-flex rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-800"
                   >
                     {c}
                   </span>
@@ -253,17 +274,21 @@ export default function UploadPage() {
             </div>
 
             <div className="mt-6">
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-700">
                 First rows
               </p>
               <div className="mt-2 overflow-x-auto rounded-md border border-slate-200">
                 <table className="min-w-full divide-y divide-slate-200 text-xs">
+                  <caption className="sr-only">
+                    Preview of the first rows detected in your uploaded CSV.
+                  </caption>
                   <thead className="bg-slate-50">
                     <tr>
                       {preview.columns.map((c) => (
                         <th
                           key={c}
-                          className="px-3 py-2 text-left font-semibold text-slate-600"
+                          scope="col"
+                          className="px-3 py-2 text-left font-semibold text-slate-800"
                         >
                           {c}
                         </th>
@@ -274,7 +299,7 @@ export default function UploadPage() {
                     {preview.preview.map((r, i) => (
                       <tr key={i}>
                         {preview.columns.map((c) => (
-                          <td key={c} className="px-3 py-2 text-slate-700">
+                          <td key={c} className="px-3 py-2 text-slate-800">
                             {r[c] ?? ""}
                           </td>
                         ))}
@@ -290,7 +315,12 @@ export default function UploadPage() {
                 type="button"
                 onClick={onCommit}
                 disabled={committing}
-                className="inline-flex items-center justify-center rounded-md bg-slate-900 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors disabled:opacity-60"
+                aria-label={
+                  committing
+                    ? "Importing rows"
+                    : `Import ${preview.mappableCount} rows into this browser`
+                }
+                className="inline-flex items-center justify-center rounded-md bg-slate-900 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
               >
                 {committing
                   ? "Importing..."
@@ -299,16 +329,17 @@ export default function UploadPage() {
               <button
                 type="button"
                 onClick={reset}
-                className="text-sm text-slate-500 hover:text-slate-900 transition-colors"
+                aria-label="Start over and choose a different CSV"
+                className="text-sm text-slate-700 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
               >
                 Start over
               </button>
             </div>
-            <p className="mt-4 text-xs text-slate-500">
+            <p className="mt-4 text-xs text-slate-600">
               Imported rows are saved to your browser&apos;s localStorage and
               never leave your machine.
             </p>
-          </div>
+          </section>
         )}
       </section>
     </main>

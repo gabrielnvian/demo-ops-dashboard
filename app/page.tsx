@@ -12,15 +12,15 @@ export default async function Home() {
   ]);
 
   return (
-    <main className="min-h-screen bg-white text-slate-900">
-      <nav className="border-b border-slate-100">
+    <main id="main-content" className="min-h-screen bg-white text-slate-900">
+      <nav aria-label="Primary" className="border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
           <span className="text-sm font-semibold tracking-tight">Gabriel Vian</span>
           <a
             href="https://github.com/gabrielnvian/demo-ops-dashboard"
             target="_blank"
             rel="noreferrer"
-            className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
+            className="text-xs text-slate-600 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
           >
             Source on GitHub
           </a>
@@ -28,13 +28,13 @@ export default async function Home() {
       </nav>
 
       <section className="mx-auto max-w-3xl px-6 pt-24 pb-20">
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+        <p className="text-xs font-medium uppercase tracking-wider text-slate-600">
           Internal tools for small teams
         </p>
         <h1 className="mt-4 text-5xl font-semibold tracking-tight leading-[1.05] text-slate-900">
           Messy spreadsheet to a real admin panel in two weeks.
         </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600">
+        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-700">
           I build custom internal tools for ops teams that have outgrown
           spreadsheets, Airtable, or Retool. Deployed, documented, and
           handed off so your team owns the code.
@@ -43,21 +43,22 @@ export default async function Home() {
         <div className="mt-10 flex flex-wrap items-center gap-5">
           <Link
             href="/upload"
-            className="inline-flex items-center justify-center rounded-md bg-slate-900 px-7 py-3.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors"
+            aria-label="Try the demo with your own spreadsheet"
+            className="inline-flex items-center justify-center rounded-md bg-slate-900 px-7 py-3.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
           >
-            Try with your spreadsheet &rarr;
+            Try with your spreadsheet <span aria-hidden="true">&rarr;</span>
           </Link>
-          <span className="text-sm text-slate-500">
+          <span className="text-sm text-slate-600">
             <span className="font-medium text-slate-900">$3,500 typical scope</span>
-            <span className="mx-2 text-slate-300">/</span>
+            <span className="mx-2 text-slate-300" aria-hidden="true">/</span>
             <span>$5k-$15k range</span>
           </span>
         </div>
-        <p className="mt-4 text-sm text-slate-500">
+        <p className="mt-4 text-sm text-slate-600">
           Or{" "}
           <Link
             href="/dashboard"
-            className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900"
+            className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
           >
             view the seeded demo dashboard
           </Link>
@@ -67,7 +68,7 @@ export default async function Home() {
 
       <section className="border-t border-slate-100">
         <div className="mx-auto max-w-5xl px-6 py-20">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-600">
             What you get
           </h2>
           <div className="mt-10 grid gap-10 md:grid-cols-3">
@@ -89,7 +90,7 @@ export default async function Home() {
 
       <section className="border-t border-slate-100 bg-slate-50/60">
         <div className="mx-auto max-w-5xl px-6 py-20">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-600">
             Who this is for
           </h2>
           <div className="mt-10 grid gap-8 md:grid-cols-3">
@@ -111,7 +112,7 @@ export default async function Home() {
 
       <section className="border-t border-slate-100">
         <div className="mx-auto max-w-5xl px-6 py-20">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-600">
             How it works
           </h2>
           <ol className="mt-10 divide-y divide-slate-100 border-y border-slate-100">
@@ -155,9 +156,10 @@ export default async function Home() {
           <div className="mt-8">
             <Link
               href="/dashboard"
-              className="inline-flex items-center justify-center rounded-md bg-white px-7 py-3.5 text-sm font-medium text-slate-900 hover:bg-slate-100 transition-colors"
+              aria-label="Open the seeded demo dashboard"
+              className="inline-flex items-center justify-center rounded-md bg-white px-7 py-3.5 text-sm font-medium text-slate-900 hover:bg-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
             >
-              Open the dashboard &rarr;
+              Open the dashboard <span aria-hidden="true">&rarr;</span>
             </Link>
           </div>
         </div>
@@ -165,7 +167,7 @@ export default async function Home() {
 
       <section className="border-t border-slate-100">
         <div className="mx-auto max-w-3xl px-6 py-20">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-slate-600">
             About
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-slate-700">
@@ -180,10 +182,10 @@ export default async function Home() {
       <section className="border-t border-slate-100 bg-slate-50/60">
         <div className="mx-auto max-w-3xl px-6 py-14">
           <details className="group">
-            <summary className="cursor-pointer text-xs font-medium uppercase tracking-wider text-slate-500 hover:text-slate-900 transition-colors">
+            <summary className="cursor-pointer text-xs font-medium uppercase tracking-wider text-slate-600 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded">
               For developers
             </summary>
-            <div className="mt-6 text-sm leading-relaxed text-slate-600 space-y-3">
+            <div className="mt-6 text-sm leading-relaxed text-slate-700 space-y-3">
               <p>
                 This demo is built with Next.js 14 (App Router), PostgreSQL
                 via Prisma, Tailwind CSS, and NextAuth. Server components for
@@ -195,7 +197,7 @@ export default async function Home() {
                   href="https://github.com/gabrielnvian/demo-ops-dashboard"
                   target="_blank"
                   rel="noreferrer"
-                  className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900"
+                  className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
                 >
                   github.com/gabrielnvian/demo-ops-dashboard
                 </a>
@@ -206,11 +208,12 @@ export default async function Home() {
       </section>
 
       <footer className="border-t border-slate-100">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-8 text-xs text-slate-500">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-8 text-xs text-slate-600">
           <span>Gabriel Vian, independent engineer</span>
           <a
             href="mailto:gvian07@gmail.com"
-            className="hover:text-slate-900 transition-colors"
+            aria-label="Email Gabriel Vian"
+            className="hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
           >
             gvian07@gmail.com
           </a>
@@ -226,7 +229,7 @@ function Feature({ title, body }: { title: string; body: string }) {
       <h3 className="text-base font-semibold tracking-tight text-slate-900">
         {title}
       </h3>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">{body}</p>
     </div>
   );
 }
@@ -237,7 +240,7 @@ function Persona({ headline, body }: { headline: string; body: string }) {
       <p className="text-base font-semibold tracking-tight text-slate-900">
         {headline}
       </p>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600">{body}</p>
+      <p className="mt-2 text-sm leading-relaxed text-slate-700">{body}</p>
     </div>
   );
 }
@@ -250,7 +253,7 @@ function Step({ n, title, body }: { n: string; title: string; body: string }) {
         <p className="text-base font-semibold tracking-tight text-slate-900">
           {title}
         </p>
-        <p className="mt-1 text-sm leading-relaxed text-slate-600">{body}</p>
+        <p className="mt-1 text-sm leading-relaxed text-slate-700">{body}</p>
       </div>
     </li>
   );

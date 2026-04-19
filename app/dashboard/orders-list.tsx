@@ -170,13 +170,14 @@ export default function OrdersList({
   return (
     <>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-600">
           Your data is stored locally in this browser.{" "}
           {hydrated && localOrders.length > 0 && (
             <button
               type="button"
               onClick={onReset}
-              className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900"
+              aria-label="Reset all locally stored demo data in this browser"
+              className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
             >
               Reset demo data
             </button>
@@ -185,10 +186,18 @@ export default function OrdersList({
         <button
           type="button"
           onClick={() => setShowForm((v) => !v)}
-          className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors"
+          aria-expanded={showForm}
+          aria-controls="new-order-form"
+          aria-label={showForm ? "Cancel new order" : "Create a new order"}
+          className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
         >
-          {showForm ? "Cancel" : "+ New order"}
+          {showForm ? "Cancel" : (<><span aria-hidden="true">+ </span>New order</>)}
         </button>
+      </div>
+
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {flash !== null ? `Imported ${flash} ${flash === 1 ? "row" : "rows"} into this browser.` : ""}
+        {toast ?? ""}
       </div>
 
       {flash !== null && (
@@ -205,18 +214,31 @@ export default function OrdersList({
 
       {showForm && <NewOrderForm onAdded={onAdded} />}
 
-      <form className="mb-6 flex flex-wrap gap-3" action="/dashboard">
+      <form
+        className="mb-6 flex flex-wrap gap-3"
+        action="/dashboard"
+        role="search"
+        aria-label="Filter orders"
+      >
+        <label htmlFor="filter-q" className="sr-only">
+          Search orders by title, customer, or notes
+        </label>
         <input
+          id="filter-q"
           type="text"
           name="q"
           defaultValue={initialQuery}
           placeholder="Search by title, customer, or notes..."
-          className="flex-1 min-w-[220px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+          className="flex-1 min-w-[220px] rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700"
         />
+        <label htmlFor="filter-status" className="sr-only">
+          Filter by status
+        </label>
         <select
+          id="filter-status"
           name="status"
           defaultValue={initialStatus}
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
+          className="rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700"
         >
           <option value="">All statuses ({merged.length})</option>
           <option value="PENDING">
@@ -234,14 +256,15 @@ export default function OrdersList({
         </select>
         <button
           type="submit"
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
         >
           Apply
         </button>
         {(initialQuery || initialStatus) && (
           <Link
             href="/dashboard"
-            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
+            aria-label="Clear search and status filters"
+            className="rounded-md border border-slate-400 bg-white px-4 py-2 text-sm text-slate-800 shadow-sm hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
           >
             Clear
           </Link>
@@ -264,7 +287,7 @@ export default function OrdersList({
               <tr>
                 <td
                   colSpan={5}
-                  className="px-4 py-10 text-center text-sm text-slate-500"
+                  className="px-4 py-10 text-center text-sm text-slate-600"
                 >
                   No orders match your filter.
                 </td>
@@ -284,7 +307,7 @@ export default function OrdersList({
                     )}
                   </div>
                   {o.notes && (
-                    <div className="mt-0.5 text-xs text-slate-500">
+                    <div className="mt-0.5 text-xs text-slate-600">
                       {o.notes}
                     </div>
                   )}
@@ -301,7 +324,7 @@ export default function OrdersList({
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <div className="text-slate-700">{fmtDate(o.dueAt)}</div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-slate-600">
                     {relative(o.dueAt)}
                   </div>
                 </td>
@@ -319,7 +342,7 @@ export default function OrdersList({
 
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
+    <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-700">
       {children}
     </th>
   );
@@ -368,40 +391,45 @@ function NewOrderForm({ onAdded }: { onAdded: (o: LocalOrder) => void }) {
 
   return (
     <form
+      id="new-order-form"
       onSubmit={onSubmit}
+      aria-labelledby="new-order-heading"
       className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <h2 className="text-sm font-semibold text-slate-900">New order</h2>
-      <p className="mt-1 text-xs text-slate-500">
+      <h2 id="new-order-heading" className="text-sm font-semibold text-slate-900">New order</h2>
+      <p className="mt-1 text-xs text-slate-600">
         Saved to your browser only. Not sent to the server.
       </p>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <label className="block text-xs font-medium text-slate-700">
+        <label htmlFor="new-order-title" className="block text-xs font-medium text-slate-800">
           Title
           <input
+            id="new-order-title"
             type="text"
             required
             maxLength={TITLE_MAX}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="mt-1 block w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700"
             placeholder="Replace condenser unit"
           />
         </label>
-        <label className="block text-xs font-medium text-slate-700">
+        <label htmlFor="new-order-customer" className="block text-xs font-medium text-slate-800">
           Customer
           <input
+            id="new-order-customer"
             type="text"
             maxLength={CUSTOMER_MAX}
             value={customer}
             onChange={(e) => setCustomer(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="mt-1 block w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700"
             placeholder="Acme Co (optional)"
           />
         </label>
-        <label className="block text-xs font-medium text-slate-700">
+        <label htmlFor="new-order-status" className="block text-xs font-medium text-slate-800">
           Status
           <select
+            id="new-order-status"
             value={status}
             onChange={(e) =>
               setStatus(
@@ -412,7 +440,7 @@ function NewOrderForm({ onAdded }: { onAdded: (o: LocalOrder) => void }) {
                   | "CANCELLED"
               )
             }
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm"
+            className="mt-1 block w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700"
           >
             <option value="PENDING">Pending</option>
             <option value="IN_PROGRESS">In progress</option>
@@ -420,14 +448,15 @@ function NewOrderForm({ onAdded }: { onAdded: (o: LocalOrder) => void }) {
             <option value="CANCELLED">Cancelled</option>
           </select>
         </label>
-        <label className="block text-xs font-medium text-slate-700 sm:col-span-2">
+        <label htmlFor="new-order-notes" className="block text-xs font-medium text-slate-800 sm:col-span-2">
           Notes
           <textarea
+            id="new-order-notes"
             rows={3}
             maxLength={NOTES_MAX}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+            className="mt-1 block w-full rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700"
             placeholder="Optional"
           />
         </label>
@@ -440,15 +469,20 @@ function NewOrderForm({ onAdded }: { onAdded: (o: LocalOrder) => void }) {
       <div className="mt-5 flex items-center gap-3">
         <button
           type="submit"
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
         >
           Save order
         </button>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-slate-600">
           {TITLE_MAX}-char title, {CUSTOMER_MAX}-char customer,{" "}
           {NOTES_MAX}-char notes.
         </span>
       </div>
+      {error && (
+        <div role="alert" aria-live="assertive" className="sr-only">
+          {error}
+        </div>
+      )}
     </form>
   );
 }

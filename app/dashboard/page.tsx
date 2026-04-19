@@ -32,20 +32,21 @@ export default async function DashboardPage({
   }));
 
   return (
-    <main className="min-h-screen bg-slate-50">
+    <main id="main-content" className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-2 flex items-start justify-between gap-6">
           <div>
             <Link
               href="/"
-              className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
+              aria-label="Back to landing page"
+              className="text-xs text-slate-600 hover:text-slate-900 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2 rounded"
             >
-              &larr; Back
+              <span aria-hidden="true">&larr;</span> Back
             </Link>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
               Job orders
             </h1>
-            <p className="mt-2 max-w-xl text-sm text-slate-600">
+            <p className="mt-2 max-w-xl text-sm text-slate-700">
               Seed rows are SSR&apos;d from PostgreSQL. Rows you upload or
               create in this demo are saved to your browser only.
             </p>
@@ -61,7 +62,7 @@ export default async function DashboardPage({
           initialStatus={statusFilter}
         />
 
-        <p className="mt-8 text-xs text-slate-500">
+        <p className="mt-8 text-xs text-slate-600">
           Seeded sample data is live from PostgreSQL. Uploaded rows and rows
           created via &ldquo;+ New order&rdquo; are stored in your browser&apos;s
           localStorage and never leave your machine. In production, the
