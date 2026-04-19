@@ -3,6 +3,12 @@
 Messy spreadsheet to a real admin panel in two weeks. Portfolio demo for
 custom internal-tool work: a job-orders tracker for a small service business.
 
+## Case study
+
+A walkthrough of how the two weeks break down, the schema choices, the CSV
+import hero feature, and what a real client engagement would add or skip:
+[docs/case-study.md](docs/case-study.md).
+
 ## What you get
 
 - **A deployed admin panel.** Auth, database, and CI/CD included. Not a Figma
