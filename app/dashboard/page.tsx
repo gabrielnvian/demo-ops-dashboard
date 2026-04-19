@@ -35,10 +35,11 @@ function relative(d: Date | null): string {
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: { q?: string; status?: string };
+  searchParams?: { q?: string; status?: string; imported?: string };
 }) {
   const q = searchParams?.q?.trim() ?? "";
   const statusFilter = searchParams?.status?.trim() ?? "";
+  const importedCount = Number(searchParams?.imported ?? "") || 0;
 
   const orders = await prisma.jobOrder.findMany({
     where: {
@@ -89,6 +90,12 @@ export default async function DashboardPage({
             + New order
           </button>
         </div>
+
+        {importedCount > 0 && (
+          <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+            {importedCount} rows imported; they will expire in 1 hour.
+          </div>
+        )}
 
         <form className="mb-6 flex flex-wrap gap-3" action="/dashboard">
           <input
@@ -147,7 +154,14 @@ export default async function DashboardPage({
               {orders.map((o) => (
                 <tr key={o.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm">
-                    <div className="font-medium text-slate-900">{o.title}</div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-slate-900">{o.title}</span>
+                      {o.expiresAt && (
+                        <span className="inline-flex items-center rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
+                          uploaded
+                        </span>
+                      )}
+                    </div>
                     {o.notes && <div className="mt-0.5 text-xs text-slate-500">{o.notes}</div>}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-700">{o.customer}</td>
