@@ -101,6 +101,31 @@ pnpm test          # one-shot run
 pnpm test:watch    # re-run on file changes
 ```
 
+### Accessibility
+
+The site targets WCAG 2.1 AA. Concretely:
+
+- `<html lang="en">` set, `<main id="main-content">` on every route, a
+  skip-to-main-content link revealed on keyboard focus.
+- Semantic landmarks: `<nav aria-label="Primary">`, `<main>`, `<footer>`,
+  headings in order (h1 -> h2 -> h3) with no skips.
+- Every interactive control is a real `<button>` or `<a>` with a visible
+  focus ring. The CSV dropzone is a button, not a div-with-onclick, so it
+  is reachable by keyboard.
+- Form inputs (dashboard filters, new-order form) have explicit
+  `<label htmlFor>` associations. The hidden file input uses `aria-label`.
+- Icon-only and ambiguous-text buttons (`+ New order`, `Reset demo data`,
+  back links) carry descriptive `aria-label`s.
+- Status messages (CSV import flash, toast, inline error) use
+  `role="status" aria-live="polite"` or `role="alert"` so screen readers
+  announce them.
+- Body copy runs slate-700 / slate-800 on white to clear the 4.5:1 AA
+  contrast ratio; slate-500 is reserved for decorative separators and is
+  marked `aria-hidden`.
+
+A source-level canary test in `app/__tests__/a11y-canaries.test.ts`
+guards the fixes above against regression.
+
 ### Deploy (Railway path)
 
 1. Push to GitHub.
