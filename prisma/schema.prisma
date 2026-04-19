@@ -64,6 +64,7 @@ model JobOrder {
   dueAt      DateTime?
   notes      String?       @db.Text
   updatedAt  DateTime      @updatedAt
+  expiresAt  DateTime?
 }
 
 enum Role {

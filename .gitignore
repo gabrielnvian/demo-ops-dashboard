@@ -19,7 +19,7 @@ dist/
 .env.production.local
 
 # Prisma
-prisma/migrations/
+# migrations are tracked
 
 # Misc
 .DS_Store
