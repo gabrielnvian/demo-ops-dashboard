@@ -42,10 +42,10 @@ export default async function Home() {
 
         <div className="mt-10 flex flex-wrap items-center gap-5">
           <Link
-            href="/dashboard"
+            href="/upload"
             className="inline-flex items-center justify-center rounded-md bg-slate-900 px-7 py-3.5 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors"
           >
-            Try the live demo &rarr;
+            Try with your spreadsheet &rarr;
           </Link>
           <span className="text-sm text-slate-500">
             <span className="font-medium text-slate-900">$3,500 typical scope</span>
@@ -53,6 +53,16 @@ export default async function Home() {
             <span>$5k-$15k range</span>
           </span>
         </div>
+        <p className="mt-4 text-sm text-slate-500">
+          Or{" "}
+          <Link
+            href="/dashboard"
+            className="underline decoration-slate-300 underline-offset-4 hover:text-slate-900"
+          >
+            view the seeded demo dashboard
+          </Link>
+          .
+        </p>
       </section>
 
       <section className="border-t border-slate-100">
