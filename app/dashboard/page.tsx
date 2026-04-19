@@ -67,20 +67,24 @@ export default async function DashboardPage({
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-8 flex items-start justify-between gap-6">
           <div>
-            <Link href="/" className="text-xs text-slate-500 hover:text-slate-900">
-              &larr; Home
+            <Link href="/" className="text-xs text-slate-500 hover:text-slate-900 transition-colors">
+              &larr; Back
             </Link>
-            <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
               Job orders
             </h1>
+            <p className="mt-2 max-w-xl text-sm text-slate-600">
+              Live data from PostgreSQL. Search, filter, and sort against the same
+              schema a real ops team would use.
+            </p>
           </div>
           <button
             type="button"
-            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
+            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors"
             disabled
-            title="Create flow scaffolded but not wired for the public demo"
+            title="Create flow scaffolded; disabled on the public demo"
           >
             + New order
           </button>
@@ -166,9 +170,9 @@ export default async function DashboardPage({
         </div>
 
         <p className="mt-8 text-xs text-slate-500">
-          Data is seeded sample data for the public demo. Search + status filters are
-          live against PostgreSQL via Prisma. Create/edit flows are scaffolded and
-          gated behind auth in production.
+          Seeded sample data. Search and status filters hit a real PostgreSQL
+          database. Create and edit flows are scaffolded; gated behind auth in
+          production.
         </p>
       </div>
     </main>

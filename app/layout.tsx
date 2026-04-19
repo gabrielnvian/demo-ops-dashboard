@@ -5,8 +5,9 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Ops Dashboard",
-  description: "SMB Operations Dashboard - Job Orders tracker",
+  title: "Gabriel Vian - Internal tools for small teams",
+  description:
+    "Custom admin panels and internal tools for ops teams outgrowing spreadsheets, Airtable, or Retool. Shipped in two weeks.",
 };
 
 export default function RootLayout({
