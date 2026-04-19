@@ -78,6 +78,16 @@ pnpm db:push   # sync schema to local Postgres
 pnpm dev       # http://localhost:3000
 ```
 
+### Tests
+
+Vitest powers the unit and route-handler tests. CI runs `pnpm test` on every
+push, so a red test blocks merge alongside a failing build.
+
+```bash
+pnpm test          # one-shot run
+pnpm test:watch    # re-run on file changes
+```
+
 ### Deploy (Railway path)
 
 1. Push to GitHub.
