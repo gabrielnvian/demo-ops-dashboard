@@ -1,36 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import OrdersList, { type SeedOrder } from "./orders-list";
 
 export const dynamic = "force-dynamic";
-
-const statusStyles: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-800 ring-amber-600/20",
-  IN_PROGRESS: "bg-blue-100 text-blue-800 ring-blue-600/20",
-  COMPLETED: "bg-emerald-100 text-emerald-800 ring-emerald-600/20",
-  CANCELLED: "bg-slate-100 text-slate-600 ring-slate-500/20",
-};
-
-const statusLabels: Record<string, string> = {
-  PENDING: "Pending",
-  IN_PROGRESS: "In progress",
-  COMPLETED: "Completed",
-  CANCELLED: "Cancelled",
-};
-
-function fmtDate(d: Date | null): string {
-  if (!d) return "-";
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
-}
-
-function relative(d: Date | null): string {
-  if (!d) return "";
-  const days = Math.round((d.getTime() - Date.now()) / 86400000);
-  if (days === 0) return "today";
-  if (days === 1) return "tomorrow";
-  if (days === -1) return "yesterday";
-  if (days < 0) return `${-days} days ago`;
-  return `in ${days} days`;
-}
 
 export default async function DashboardPage({
   searchParams,
@@ -39,164 +11,63 @@ export default async function DashboardPage({
 }) {
   const q = searchParams?.q?.trim() ?? "";
   const statusFilter = searchParams?.status?.trim() ?? "";
-  const importedCount = Number(searchParams?.imported ?? "") || 0;
 
-  const orders = await prisma.jobOrder.findMany({
-    where: {
-      AND: [
-        q
-          ? {
-              OR: [
-                { title: { contains: q, mode: "insensitive" } },
-                { customer: { contains: q, mode: "insensitive" } },
-                { notes: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {},
-        statusFilter ? { status: statusFilter as never } : {},
-      ],
-    },
+  // Seed data lives in Postgres and is shared across visitors. Per-visitor
+  // uploads and manually created orders live in localStorage on the client;
+  // OrdersList merges them on mount.
+  const rows = await prisma.jobOrder.findMany({
     orderBy: [{ createdAt: "desc" }],
   });
 
-  const counts = await prisma.jobOrder.groupBy({
-    by: ["status"],
-    _count: true,
-  });
-  const countsByStatus = Object.fromEntries(counts.map((c) => [c.status, c._count]));
+  // Normalize Prisma types to plain JSON so the Client Component boundary
+  // does not try to serialize Date objects.
+  const seedOrders: SeedOrder[] = rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    customer: r.customer,
+    status: r.status,
+    dueAt: r.dueAt ? r.dueAt.toISOString() : null,
+    notes: r.notes,
+    createdAt: r.createdAt.toISOString(),
+  }));
 
   return (
     <main className="min-h-screen bg-slate-50">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="mb-8 flex items-start justify-between gap-6">
+        <div className="mb-2 flex items-start justify-between gap-6">
           <div>
-            <Link href="/" className="text-xs text-slate-500 hover:text-slate-900 transition-colors">
+            <Link
+              href="/"
+              className="text-xs text-slate-500 hover:text-slate-900 transition-colors"
+            >
               &larr; Back
             </Link>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900">
               Job orders
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-600">
-              Live data from PostgreSQL. Search, filter, and sort against the same
-              schema a real ops team would use.
+              Seed rows are SSR&apos;d from PostgreSQL. Rows you upload or
+              create in this demo are saved to your browser only.
             </p>
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-colors"
-            disabled
-            title="Create flow scaffolded; disabled on the public demo"
-          >
-            + New order
-          </button>
+          {/* New-order button is rendered inside OrdersList so it can open
+              the inline form without a client island wrapper at the page
+              level. */}
         </div>
 
-        {importedCount > 0 && (
-          <div className="mb-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-            {importedCount} rows imported; they will expire in 1 hour.
-          </div>
-        )}
-
-        <form className="mb-6 flex flex-wrap gap-3" action="/dashboard">
-          <input
-            type="text"
-            name="q"
-            defaultValue={q}
-            placeholder="Search by title, customer, or notes..."
-            className="flex-1 min-w-[220px] rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-          />
-          <select
-            name="status"
-            defaultValue={statusFilter}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm shadow-sm"
-          >
-            <option value="">All statuses ({orders.length})</option>
-            <option value="PENDING">Pending ({countsByStatus["PENDING"] ?? 0})</option>
-            <option value="IN_PROGRESS">In progress ({countsByStatus["IN_PROGRESS"] ?? 0})</option>
-            <option value="COMPLETED">Completed ({countsByStatus["COMPLETED"] ?? 0})</option>
-            <option value="CANCELLED">Cancelled ({countsByStatus["CANCELLED"] ?? 0})</option>
-          </select>
-          <button
-            type="submit"
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800"
-          >
-            Apply
-          </button>
-          {(q || statusFilter) && (
-            <Link
-              href="/dashboard"
-              className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 shadow-sm hover:bg-slate-50"
-            >
-              Clear
-            </Link>
-          )}
-        </form>
-
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200">
-            <thead className="bg-slate-50">
-              <tr>
-                <Th>Order</Th>
-                <Th>Customer</Th>
-                <Th>Status</Th>
-                <Th>Due</Th>
-                <Th>Created</Th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {orders.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-500">
-                    No orders match your filter.
-                  </td>
-                </tr>
-              )}
-              {orders.map((o) => (
-                <tr key={o.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-slate-900">{o.title}</span>
-                      {o.expiresAt && (
-                        <span className="inline-flex items-center rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-indigo-700 ring-1 ring-inset ring-indigo-600/20">
-                          uploaded
-                        </span>
-                      )}
-                    </div>
-                    {o.notes && <div className="mt-0.5 text-xs text-slate-500">{o.notes}</div>}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-700">{o.customer}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span
-                      className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${statusStyles[o.status] ?? ""}`}
-                    >
-                      {statusLabels[o.status] ?? o.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm">
-                    <div className="text-slate-700">{fmtDate(o.dueAt)}</div>
-                    <div className="text-xs text-slate-500">{relative(o.dueAt)}</div>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-700">{fmtDate(o.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <OrdersList
+          seedOrders={seedOrders}
+          initialQuery={q}
+          initialStatus={statusFilter}
+        />
 
         <p className="mt-8 text-xs text-slate-500">
-          Seeded sample data. Search and status filters hit a real PostgreSQL
-          database. Create and edit flows are scaffolded; gated behind auth in
-          production.
+          Seeded sample data is live from PostgreSQL. Uploaded rows and rows
+          created via &ldquo;+ New order&rdquo; are stored in your browser&apos;s
+          localStorage and never leave your machine. In production, the
+          upload path writes to the same Postgres the seed reads from.
         </p>
       </div>
     </main>
-  );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
-      {children}
-    </th>
   );
 }
