@@ -76,13 +76,25 @@ export async function POST(request: Request) {
 
   const columns = parsed.meta?.fields ?? Object.keys(data[0] || {});
   const preview = data.slice(0, 3);
-  const mappedCount = data.filter((r) => mapRow(r) !== null).length;
+  const mapped = data
+    .map((r) => mapRow(r))
+    .filter((r): r is NonNullable<ReturnType<typeof mapRow>> => r !== null);
+
+  // Serialize Date to ISO so the client receives plain JSON that can be
+  // dropped straight into localStorage without a second transform pass.
+  const mappedRows = mapped.map((r) => ({
+    title: r.title,
+    customer: r.customer,
+    status: r.status,
+    dueAt: r.dueAt ? r.dueAt.toISOString() : null,
+    notes: r.notes,
+  }));
 
   return NextResponse.json({
     columns,
     preview,
     rowCount: data.length,
-    mappableCount: mappedCount,
-    rows: data,
+    mappableCount: mapped.length,
+    mappedRows,
   });
 }
