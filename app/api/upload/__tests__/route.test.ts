@@ -15,7 +15,7 @@ function fileFrom(name: string, content: string, type: string): File {
 }
 
 describe("POST /api/upload", () => {
-  it("returns {columns, rowCount, mappableCount, preview, rows} for a valid CSV", async () => {
+  it("returns {columns, rowCount, mappableCount, preview, mappedRows} for a valid CSV", async () => {
     const csv = [
       "title,customer,status,priority",
       "Install HVAC,Acme,pending,high",
@@ -35,8 +35,15 @@ describe("POST /api/upload", () => {
     expect(body.mappableCount).toBe(2);
     expect(Array.isArray(body.preview)).toBe(true);
     expect(body.preview.length).toBeGreaterThan(0);
-    expect(Array.isArray(body.rows)).toBe(true);
-    expect(body.rows.length).toBe(2);
+    expect(Array.isArray(body.mappedRows)).toBe(true);
+    expect(body.mappedRows.length).toBe(2);
+    // Each mapped row should carry the fields the dashboard renders.
+    const first = body.mappedRows[0];
+    expect(first.title).toBe("Install HVAC");
+    expect(first.customer).toBe("Acme");
+    expect(first.status).toBe("PENDING");
+    // unknown "priority" column is preserved in notes per csv-mapping.
+    expect(first.notes).toContain("priority: high");
   });
 
   it("returns 415 for a non-CSV file extension", async () => {
@@ -88,5 +95,23 @@ describe("POST /api/upload", () => {
     const body = await res.json();
     expect(body.rowCount).toBe(2);
     expect(body.mappableCount).toBe(0);
+    expect(Array.isArray(body.mappedRows)).toBe(true);
+    expect(body.mappedRows.length).toBe(0);
+  });
+
+  it("serializes dueAt as an ISO string in mappedRows", async () => {
+    const csv = [
+      "title,dueAt",
+      "With date,2026-05-01",
+      "Without date,",
+    ].join("\n");
+    const form = new FormData();
+    form.append("file", fileFrom("dated.csv", csv, "text/csv"));
+
+    const res = await POST(makeRequest(form));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.mappedRows[0].dueAt).toMatch(/^2026-05-01/);
+    expect(body.mappedRows[1].dueAt).toBeNull();
   });
 });

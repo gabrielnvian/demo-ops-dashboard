@@ -3,13 +3,30 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import type { JobStatus } from "@prisma/client";
+import { addLocalOrdersFromMapped } from "@/lib/local-orders";
+import {
+  CUSTOMER_MAX,
+  NOTES_MAX,
+  TITLE_MAX,
+  UnsafeInputError,
+  sanitizeText,
+} from "@/lib/validation";
+
+type MappedRow = {
+  title: string;
+  customer: string;
+  status: JobStatus;
+  dueAt: string | null;
+  notes: string | null;
+};
 
 type PreviewResponse = {
   columns: string[];
   preview: Array<Record<string, string>>;
   rowCount: number;
   mappableCount: number;
-  rows: Array<Record<string, string>>;
+  mappedRows: MappedRow[];
 };
 
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -71,29 +88,46 @@ export default function UploadPage() {
     [handleFile]
   );
 
-  const onCommit = async () => {
+  const onCommit = () => {
     if (!preview) return;
     setCommitting(true);
     setError(null);
     try {
-      const res = await fetch("/api/upload/commit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: preview.rows }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Import failed.");
+      // Sanitize on the client before writing to localStorage. The server
+      // already ran the column-mapping pass, so here we just enforce
+      // length caps and refuse embedded <script>/<iframe>.
+      const cleaned: Array<Omit<MappedRow, never>> = [];
+      for (const r of preview.mappedRows) {
+        const title = sanitizeText(r.title, TITLE_MAX);
+        if (!title) continue;
+        const customer = sanitizeText(r.customer, CUSTOMER_MAX) || "Unknown";
+        const notes = r.notes ? sanitizeText(r.notes, NOTES_MAX) : "";
+        cleaned.push({
+          title,
+          customer,
+          status: r.status,
+          dueAt: r.dueAt,
+          notes: notes || null,
+        });
+      }
+      if (cleaned.length === 0) {
+        setError(
+          "No rows had a recognizable title column. Check your CSV headers."
+        );
         setCommitting(false);
         return;
       }
-      const count = data.inserted as number;
+      const saved = addLocalOrdersFromMapped(cleaned);
       const params = new URLSearchParams({
-        imported: String(count),
+        imported: String(saved.length),
       });
       router.push(`/dashboard?${params.toString()}`);
     } catch (err) {
-      setError("Network error. Try again.");
+      if (err instanceof UnsafeInputError) {
+        setError(err.message);
+      } else {
+        setError("Could not import rows. Try again.");
+      }
       setCommitting(false);
     }
   };
@@ -125,9 +159,11 @@ export default function UploadPage() {
           Upload your spreadsheet.
         </h1>
         <p className="mt-3 text-slate-600 leading-relaxed">
-          Drop any CSV of orders, jobs, or tasks. I will detect the columns,
-          map them to a real schema, and create a working admin view from it.
-          Uploaded rows live for one hour on this public demo.
+          Drop any CSV of orders, jobs, or tasks. I detect the columns, map
+          them to a real schema, and drop the rows into a working admin view.
+          On this public demo the rows are saved to your browser only; in
+          production they would write to the same Postgres the dashboard
+          reads from.
         </p>
 
         {!preview && (
@@ -164,7 +200,9 @@ export default function UploadPage() {
               Max 5 MB, up to {MAX_ROWS_HINT} rows. .csv only.
             </p>
             {fileName && !loading && (
-              <p className="mt-3 text-xs text-slate-600">Selected: {fileName}</p>
+              <p className="mt-3 text-xs text-slate-600">
+                Selected: {fileName}
+              </p>
             )}
           </div>
         )}
@@ -267,7 +305,8 @@ export default function UploadPage() {
               </button>
             </div>
             <p className="mt-4 text-xs text-slate-500">
-              Imported rows expire in 1 hour on this public demo.
+              Imported rows are saved to your browser&apos;s localStorage and
+              never leave your machine.
             </p>
           </div>
         )}
