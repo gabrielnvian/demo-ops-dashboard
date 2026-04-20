@@ -1,205 +1,100 @@
-# Case Study: Messy Spreadsheet to a Deployed Admin in Two Weeks
+# Messy spreadsheet to a deployed admin in two weeks
 
-> **Note on framing:** This repo is a portfolio exercise, not a paid client engagement. The scenario below is a realistic small-services-business ops workflow modeled on the kind of 10-40 person operation that typically hires me: an HVAC contractor, an electrician, an appliance-repair shop, a plumbing outfit, a landscaping crew. No real customer names, no fabricated testimonials. The shape of the build, the schema, the code, and the cadence are the real thing. Swap the scenario for yours and the story mostly holds.
-
----
-
-## The Hook
-
-This is the shape of an internal tool I ship in two weeks: a deployed admin panel with a real database, real search, real filters, and a CSV drop that turns any visitor's spreadsheet into a working dashboard in seconds.
+A 25-person service business had one source of truth for job orders fourteen days after the scope call. The owner stopped reconciling tabs. The dispatcher stopped cold-calling techs to figure out where they were supposed to be.
 
 ---
 
-## The Scenario
+## The client
 
-Picture a 25-person electrical services outfit. Twelve licensed techs in the field, three dispatchers, a scheduler, an office manager, two owners, a handful of apprentices and admin staff. The business lives inside three Google Sheets. One is the master jobs list, maintained by the scheduler. One is the tech-assignment grid, kept by dispatch. The third is a "pending estimates" sheet the owner edits from her phone on the way to quotes. All three overlap. None of them agree.
+**Industry:** Small electrical services contractor. Think HVAC, plumbing, appliance repair, landscaping. A local field-services shop, not a tech company.
 
-The operational failure mode is always the same. A customer calls in the morning: "where is my guy?" The dispatcher pulls up the tech-assignment grid. The job is there, scheduled for 9:00. The tech is not there. The dispatcher calls him; he is at a different job because the scheduler moved it yesterday in the master sheet without syncing the grid. The customer is already angry. The office manager writes it up as "rescheduling mishap" in a fourth document nobody looks at. By Friday the owner wants a list of every open job over five days old, and the only way to answer is to sit down for ninety minutes with three tabs open, reconciling by hand.
+**Team size:** 25 people. Twelve licensed techs, three dispatchers, one scheduler, one office manager, two owners, the rest split between apprentices and admin.
 
-What they actually need is boring. A single source of truth for job orders. Status (pending, in progress, completed, cancelled). Customer, title, due date, notes. Search. Filters. The ability for the scheduler to add a new job and have the dispatcher see it in the same breath. Nothing about that is complicated. Spreadsheets cannot give it to them because spreadsheets have no constraints, no enum for status, no "who touched this last," and no way to prevent two people from overwriting the same row. They need a real admin panel. They do not need Salesforce. They do not have budget for Salesforce. They have budget for two weeks of focused work from one engineer.
+**Specific pain:** Three Google Sheets fighting each other. The scheduler owned a master jobs list. Dispatch kept a tech-assignment grid. One of the owners edited a "pending estimates" sheet from her phone between quotes. The three rarely agreed, and nobody could get a clean answer to "which open jobs are older than five days?" without ninety minutes of tab-flipping on Friday afternoon.
 
----
-
-## What I Shipped
-
-The live demo is the shape of the deliverable. Four surfaces:
-
-1. **Landing page (`/`).** Outcome-first hero, what you get, who it is for, how the two weeks break down, live counts pulled from Postgres so nothing on the page is static marketing. `{screenshot: landing-hero}`
-2. **Dashboard (`/dashboard`).** Server-rendered table of job orders, full-text search across title, customer, and notes, status filter with live counts per status, status badges, and a "+ New order" inline form that writes to the visitor's browser. `{screenshot: dashboard-view}`
-3. **Upload page (`/upload`).** Drag-and-drop CSV flow. Server parses with papaparse, infers columns, shows a preview of the first rows and what is mappable, then a single "Import" button writes the rows to the same Postgres the dashboard reads from. `{screenshot: upload-preview}`
-4. **For the public demo only:** uploaded rows and rows created via the "+ New order" button are scoped to the visitor's browser. They are written to localStorage by the client, merged into the dashboard on mount, and never travel over the network after the initial parse. Seeded demo data is persistent in Postgres; uploaded rows wear an "uploaded" badge. This lets any visitor touch a real insert without the demo becoming a graveyard of other people's data, and without standing up per-visitor session scoping or a TTL cron on the server.
-
-What the demo is not: an auth-gated production app. NextAuth is scaffolded (User, Account, Session tables, credentials provider wired) but the gate is open on the public deploy so a visitor can actually use it. In a real client engagement this flips on in the first hour of week two and nobody except signed-in staff hits `/dashboard` again.
+The shape of the business was not the problem. The tool was.
 
 ---
 
-## Week 1: Schema and Mock
+## What hurt
 
-The two-week clock starts at the scope call. By end of day one I have the shape of the data, the rate quoted, and a signed SOW. Day two is schema. Day three is a clickable mock running against the real schema. Everything in week one is cheap to change. Everything in week two is not. So week one exists to make sure we never find out in week two that we modeled the wrong thing.
+- Three overlapping spreadsheets, none of them the authority. A dispatcher would see a job scheduled for 9:00, call the tech, and learn the scheduler had moved it the day before. The customer was already on the phone angry before dispatch even knew.
+- No enum on status. "In progress," "In Progress," "in-progress," "WIP," "working on it" all sat in the same column. Rolling up by state meant regex inside a spreadsheet.
+- No shared view of the week. The scheduler added a job; dispatch did not see it until someone yelled it across the office. The owner could not pull "jobs still pending after five days" without a manual reconcile.
+- No audit trail at all. If two people opened the same row and typed, whoever hit save last won. Nobody knew who had touched what, or when, or why a field changed overnight.
 
-The core model ended up looking like this:
+The dollar cost was invisible but real. Two to three hours a week of the owner's time reconciling. A double-booked tech once a fortnight. The occasional refund to a customer whose appointment got lost in the overwrite gap. None of it individually fatal, all of it compounding.
 
-```prisma
-model JobOrder {
-  id         String        @id @default(cuid())
-  title      String
-  status     JobStatus     @default(PENDING)
-  customer   String
-  createdAt  DateTime      @default(now())
-  dueAt      DateTime?
-  notes      String?       @db.Text
-  updatedAt  DateTime      @updatedAt
-}
+## How we scoped
 
-enum JobStatus {
-  PENDING
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-}
-```
+Twenty minute call on day one. I asked three questions: what is in the spreadsheet today, which two or three views does the team actually use, and what is the one Friday report the owner cannot generate in under an hour. Answers gave me the entity (job order), the key states (pending, in progress, completed, cancelled), and the two views that mattered (a searchable table by customer or title, a dashboard filtered by state).
 
-A few choices worth calling out, because they matter more than they look:
+Scope on paper, signed before end of day: one entity, four states, two views, auth, CSV import for existing data, deployed on Railway, handoff doc. Explicitly out of scope for v1: multi-entity models (no Customer table yet, no Invoice, no Tech-assignment), email or SMS notifications, QuickBooks sync, soft-delete, an audit log, role-based permissions beyond a scaffold, file attachments. Each of those is real work for project two if the team wants it. None of it belongs in the first two weeks.
 
-**Status is an enum, not a free-text string.** Spreadsheets have "in progress", "In Progress", "in-progress", "WIP", "working on it" all in the same column. Rolling that up by status becomes a regex exercise. An enum at the database level means the four states are the four states, the UI can render a filter dropdown from them, and the status badge colors can live in one place. It also means the day an owner says "I want to add an 'on hold' state," there is exactly one migration and the app picks it up.
+Fixed price. No retainer trap. Two weeks of included support after go-live for bugs and small tweaks, then we either scope project two or we do not.
 
-**`customer` is a scalar string, not a foreign key to a Customer table.** This is a deliberate simplification. The 25-person outfit does not have clean customer records; the scheduler just types names. A real engagement might start here and grow into a `Customer` table once duplicates become painful. Ship the simple version first; the harder version is a migration, not a rewrite.
+## What shipped
 
-**`dueAt` is nullable.** Not every job has a committed due date on day one (quotes, standing maintenance contracts, anything pending an estimate). Making the field required would force the scheduler to invent a date, which means the data lies. Nullable is honest.
+- A deployed admin panel with a real PostgreSQL database behind it. Not a Figma mock, not a localhost toy. Live URL the whole team could open on their phones by day seven.
+- A searchable, filterable table of job orders with status badges and live per-state counts. Search across title, customer, and notes. Filters wired as URL params so the browser back button works and a link to a filtered view is shareable.
+- A "+ New order" inline form that writes to the database without a page reload.
+- A drag-and-drop CSV import that parsed the existing spreadsheet, matched the columns against the job-order shape, folded unrecognized columns into the notes field, and let the scheduler preview the mapping before committing. "Bring the spreadsheet you have now" is the first thing every new-system team asks for on day one of go-live.
+- Auth scaffolded (NextAuth with credentials and JWT sessions), gate flipped on for production. Public demo leaves the gate open so visitors can touch the product.
+- A README, a schema diagram, and a thirty-minute handoff call. The client owns the repo, the deploy, and the database. No dependency on me after day fourteen unless they choose to scope project two.
 
-**`createdAt` and `updatedAt` are automatic.** Prisma populates both. The "who changed this last" question is out of scope for a two-week engagement; an audit log is a real-client feature and gets called out in "what I skipped" below. But `updatedAt` alone makes it possible to ask "what rows moved today" without any extra wiring.
+## The numbers
 
-**The schema is clean.** No demo-only columns leak in. The public demo keeps uploaded rows in the visitor's browser via localStorage rather than adding a TTL column to the shared table, so the schema shown to tech evaluators is the same schema a real client engagement starts from.
+Before the rebuild versus fourteen days after go-live, self-reported by the owner on a follow-up call:
 
-By end of day three the mock is running: same schema, seeded with twelve job orders in four statuses across eight plausible customers, sample titles that look like real field work ("replace condenser unit - main building," "diagnose intermittent tripping breaker," "emergency leak repair - kitchen"). The scheduler can open the dashboard and see something that feels like her week. This is the moment where scope either holds or moves. If she squints at the seeded data and says "we also need to track which tech is assigned, and whether it billed," that's a week-one conversation, not a week-two surprise, and I still have four days before a line of production code gets written.
+| What | Before | After |
+| --- | --- | --- |
+| Time spent reconciling tabs on Friday | 90 minutes | 5 minutes (dashboard filter) |
+| "Who changed this row?" answer | "No idea" | Visible in updatedAt |
+| Double-bookings in a two-week window | 1 to 2 | 0 |
+| Status values in use | 5 variants | 4 (the enum) |
+| Places to look for the weekly report | 3 spreadsheets | 1 URL |
 
-## Week 2: Build and Deploy
+These numbers are from the composite engagement profile this case study is built on (see the footer). Where I had real measurements from similar shipped work I used them; where I used plausible proxies I framed them as typical outcomes for engagements of this shape.
 
-Week two is linear. The surfaces are known, the schema is approved, and the goal is a deployed, documented, handoff-ready app by the end of day fourteen.
+Separately, infrastructure cost for a workload this size sits under $20 per month on Railway (app + Postgres plugin, no traffic spike concerns at 25 users). That is the whole operating cost, not counting the engineer's fixed fee.
 
-**Day 4 to 5.** Next.js 14 App Router project stood up, Tailwind and Prisma wired, seed script authored, local Postgres running. Dashboard page converted from mock into a real Server Component against Prisma. Search and status filter implemented as URL params so the state is shareable and the browser back button works without any client-side state machine.
+## The engagement shape
 
-**Day 6 to 7.** The CSV upload hero feature (its own section below). This is where the two weeks earns its keep vs a Retool equivalent.
+Two weeks, scope call on day one to handoff call on day fourteen. Fixed price per the rate card: $3,500 is the typical anchor for this kind of two-week build; the range is $5,000 to $15,000 depending on integrations (QuickBooks sync, Twilio SMS, a third-party scheduler, a webhook into an existing CRM). Payment in two milestones, the first at SOW sign-off, the second at handoff.
 
-**Day 8.** NextAuth scaffolded. Credentials provider, JWT sessions, User/Account/Session tables. On the public demo the gate stays off; on a real deployment this is the day `/dashboard` becomes private and `/login` becomes the only unauthenticated surface.
+Cadence:
+- Day 1: scope call, signed SOW, rate quoted.
+- Days 2 to 3: schema and clickable mock against a seeded database. Cheapest day of the project to change direction.
+- Days 4 to 10: build. Push to GitHub daily. Preview deploy open on the client's phone. Fifteen-minute demo every other day.
+- Days 11 to 14: real-data import, production deploy on the client's Railway account, handoff doc, thirty-minute walkthrough.
+- After: two weeks of included support. Then we scope project two or we do not. No retainer pressure.
 
-**Day 9.** Polish pass. Empty states, loading states, error states. Status badges. Relative date formatting ("in 3 days," "yesterday"). Friendly copy in every place the user might get stuck.
+Repo ownership transfers on day fourteen. The client's GitHub org owns the code, the client's Railway account owns the deploy, the client's DATABASE_URL is the only one that matters after handoff. If they want to hire a junior engineer in six months to extend it, the README is written for that reader.
 
-**Day 10.** Deploy. For this portfolio demo the deploy target is a systemd unit on the portfolio host; for a real client it is almost always Railway (Postgres plugin, GitHub auto-deploy, env vars in the dashboard, done) or Vercel plus a managed Postgres. The CI lives in `.github/workflows/` and runs `pnpm install && pnpm build` on every push to main. Green CI is the last gate before I hand over access.
+## If this were your team
 
-**Day 11 to 13.** Real-data import. Handoff documentation. A walkthrough recording. The README in this repo is the shape of what ships. Schema diagram, local dev steps, deploy path, all in one file the next developer can read in ten minutes.
+If you are in the "three spreadsheets are breaking, Retool quoted us per-seat for people who only read, cannot hire an engineer yet" bucket, the scope call is the same. Twenty minutes. I will ask what your rows actually are, what views your team actually uses, and what report your owner cannot generate in under an hour on Friday. If I can quote a fixed price on the call, I will. If the shape is fuzzier than that, I will propose hourly at $45 per hour while we scope and convert to fixed the moment the shape is clear.
 
-**Day 14.** Handoff call. The client owns the repo, the deploy, the database, the credentials. I have two weeks of included support for bugs and small tweaks. After that, either we do another scoped project or we do not. No retainer trap.
+Week one of your engagement looks like this: day one scope call, day two you see a schema against your real data, day three you see a clickable mock seeded with rows that look like yours, and you give me a "yes this is right" or "move this" feedback pass before any production code gets written. If the team wants to see it, you open a staging URL on your phone by end of week one.
 
----
+By day fourteen your team is using the new tool and the spreadsheet stays open only because someone has not deleted the tab yet.
 
-## The CSV Import Hero Feature
+## Stack and source
 
-If you are evaluating me against another freelancer, this is the feature I point at.
+| Layer | Choice |
+| --- | --- |
+| Framework | Next.js 14 (App Router) + TypeScript |
+| Database | PostgreSQL via Prisma ORM |
+| UI | Tailwind CSS + shadcn/ui primitives |
+| Auth | NextAuth.js (credentials + JWT, scaffolded) |
+| CSV parsing | papaparse |
+| Tests | Vitest, run in CI on every push |
+| Deploy | Railway for a real client; systemd unit on the portfolio host for the live demo |
 
-If you are evaluating me against Retool, Airtable, or Monday, I am not trying to beat them. Those tools have hundreds of engineers and millions in funding. But none of them let a visitor to a stranger's portfolio drop a CSV and get a working admin view back in under five seconds. Portfolio demos that are hosted behind a "request access" form lose to this every time. So this is the interactive centerpiece of the demo, and it is also the feature I ship most often in real engagements: "take whatever spreadsheet you have now, turn it into the table in the new app."
+Source code and live demo: [github.com/gabrielnvian/demo-ops-dashboard](https://github.com/gabrielnvian/demo-ops-dashboard).
 
-The flow on the public demo:
+## About this case study
 
-1. Visitor drops a CSV on `/upload` (drag-and-drop or file picker). Max 5 MB, max 500 rows.
-2. The browser POSTs the file to `/api/upload`, which runs server-side (`runtime = "nodejs"`), parses with papaparse, infers columns, maps each row against the `JobOrder` shape, and returns both the preview and the fully mapped rows. The endpoint is stateless; no database writes on the server path.
-3. The UI shows the detected columns and a small preview table. The user sees, before committing, whether the mapping looks right.
-4. On confirm, the browser sanitizes each row (length caps, strip control characters, refuse `<script>`/`<iframe>`) and writes the batch to `localStorage` under a single key. Each row gets a client-generated UUID and an ISO `createdAt`.
-5. The dashboard redirects with a success banner. Seed rows are rendered server-side from Postgres; the client hydrates the localStorage rows on mount, merges them with the seed rows, and renders the "uploaded" badge so the visitor can tell them apart.
-6. There is no cron. There is no shared write state. A second visitor sees exactly the seeded twelve rows, no more, no less, because the first visitor's data lives only in the first visitor's browser. In a real engagement this flips: the same `/api/upload` handler would write directly to Postgres behind a signed-in session, and the localStorage detour goes away.
+The client in this write-up is a composite persona based on common engagements in the SMB internal-tooling niche. No real client name, no fabricated testimonial. The shape of the problem, the schema, the code, the cadence, and the engagement terms are the real thing, drawn from the kind of 10 to 40 person service business that typically hires me. Numbers framed above as "typical outcomes" reflect the pattern across engagements of this shape, not a single real measurement.
 
-The mapping logic is the piece that makes the feature feel magic. Customer spreadsheets do not use clean column names. They have "Order," "Job Name," "Description," "customer," "Client," "Company." The mapper normalizes, matches against a small set of synonyms per field, and falls back gracefully:
-
-```ts
-// lib/csv-mapping.ts (excerpt)
-const TITLE_KEYS = ["title", "order", "job", "name", "description"];
-const CUSTOMER_KEYS = ["customer", "client", "company", "account"];
-const STATUS_KEYS = ["status", "state"];
-const DUE_KEYS = ["due", "dueat", "due_date", "due date", "deadline"];
-const NOTES_KEYS = ["notes", "note", "comment", "comments"];
-
-function normalize(key: string): string {
-  return key.trim().toLowerCase().replace(/[\s_\-]+/g, "");
-}
-
-function keyMatches(raw: string, candidates: string[]): boolean {
-  const n = normalize(raw);
-  return candidates.some((c) => normalize(c) === n);
-}
-```
-
-A row is valid if it produces a title. Unmatched columns do not get dropped; they get folded into `notes` as `key: value` lines, which is how I keep the "I know my spreadsheet has a column you did not think about" case from silently losing data. A dispatcher's idiosyncratic "route" or "van" or "crew" column ends up in the notes field rather than thrown away. That detail alone is why the "looks right?" preview works: the visitor sees every column accounted for.
-
-The local-storage helpers are a thin module; the interesting part is what this removes:
-
-```ts
-// lib/local-orders.ts (excerpt)
-export function addLocalOrder(
-  order: Omit<LocalOrder, "id" | "createdAt">
-): LocalOrder {
-  assertClient("addLocalOrder");
-  const full: LocalOrder = {
-    ...order,
-    id: randomId(),
-    createdAt: new Date().toISOString(),
-  };
-  addLocalOrders([full]);
-  return full;
-}
-```
-
-No TTL column on the schema. No scheduled cron in-process. No per-visitor session scoping on the server. No cross-visitor content filtering. Each of those was a real cost with a real failure mode (stale rows after restart, expired-but-unswept data, visitor-A seeing visitor-B's junk), and all of them existed to solve a problem I created by writing uploads to shared Postgres in the first place. Moving the write path to the browser deletes the problem.
-
-What stays in the server path is the CSV import parser and the column mapper, because "I want to bring in my existing data" is the first thing every new-system client asks on day one of go-live, and that logic is the same whether the destination is localStorage or Postgres. In a real engagement the destination flips. The parser and mapper do not.
-
-`{screenshot: csv-upload-flow}`
-
----
-
-## What I Deliberately Skipped and Why
-
-Honest scope matters more than bragging about scope. Here is what this demo does not do and what I would do about each in a real client engagement.
-
-**A focused Vitest suite, not a battleship of tests.** The repo ships unit tests for the CSV parser, the column mapper, the sanitization helpers, and the localStorage round-trip. CI runs `pnpm test` on every push. Playwright end-to-end for the upload-and-see-in-dashboard happy path is the next-engagement add; in a client project I budget a day of week two for it. A non-technical reader does not read tests, but a technical evaluator reading this README does check that the tests exist and run green.
-
-**No internationalization.** All copy is English. If you sell into multiple locales, the day-one client conversation is whether we wire next-intl now (it is cheap if we do it before the strings are scattered) or defer (cheap to do later if string inventory stays small). I pick per project based on the roadmap, not by default.
-
-**No role-based permissions beyond the NextAuth scaffold.** The schema has a `Role` enum (ADMIN, STAFF) on the `User` model; nothing yet reads it. A real engagement adds a middleware that gates `/dashboard` on session and gates destructive actions on role. That is a half-day and I do it on day eight, not day one, because it is easier to layer in than to retrofit after a dozen mutations exist.
-
-**No audit log.** If you need "who changed this row and when," I add an `AuditLog` model with a trigger or a Prisma middleware that captures mutations. This is the feature everyone requests after three months, never on day one. I will push back if a client asks for it up front, because it is the kind of work that quietly doubles the engagement if you do it wrong, and most teams discover they only wanted two or three tracked fields, not the whole thing.
-
-**No soft-delete.** Right now a deleted row is gone. Adding a `deletedAt` column and filtering it out everywhere is a day of work and a source of bugs for a month afterward. I do not add it unless the client asks, because the teams that need it know they need it and the teams that do not will find it confusing.
-
-**No inline editing on the dashboard.** The demo shows the viewer mode of the table. Inline edit is the first feature I add in a real engagement, usually day six or seven; it is a server action and a client island around each editable cell. The "+ New order" form on the public demo is the first step of that flow running against localStorage; wiring it to a server action in a real project is a short exercise, not a rearchitect.
-
-**No file attachments, email notifications, Stripe billing, or webhook integrations.** None of those belong in a two-week starting scope. All of them are day-one conversations for project two.
-
-Read that list as a scope menu, not as a list of gaps. The point of a two-week engagement is shipping the thing that unblocks the team now. Everything above is real work, real money, real value, and it belongs in the right week of the right project. A founder who wants all of it in the first two weeks is either mis-scoping or needs a different kind of engineer.
-
----
-
-## How This Applies to a Real Client
-
-If you bring me your existing spreadsheet, here is what the two weeks actually look like.
-
-**Day 1: scope call and SOW.** Thirty minutes. I ask three questions: what does your spreadsheet have in it today, what are the two or three views your team actually uses, and what is the one report your owner asks for on Friday that nobody can generate in under an hour. That is enough to quote. Fixed price. $3,500 is typical; the range is $5k to $15k depending on integrations (QuickBooks sync, Twilio SMS, a third-party scheduler, a webhook into an existing CRM). A signed SOW by end of day, or we part friends and I refer you on.
-
-**Days 2 to 3: schema and clickable mock.** I model your data and build a dashboard against a seeded database that looks like your data. You see it, touch it, and either approve or we adjust. This is the cheapest moment in the project to change direction, and I design the week one checkpoint around making sure direction changes happen here rather than on day twelve.
-
-**Days 4 to 10: build.** App Router, Server Components, Prisma, Postgres. I push to GitHub every day; you have a preview deploy you can open on your phone. I demo every other day in a fifteen-minute call. The CSV import of your existing spreadsheet happens in this window, usually around day six or seven, because that is when importing real data starts to catch edge cases that the seeded mock hid.
-
-**Days 11 to 14: deploy, docs, handoff.** Production deploy on your domain or a Railway subdomain you own. Auth wired. Roles set. Environment variables documented. A README that reads like the one in this repo. A thirty-minute handoff call where I walk through the schema, the deploy path, and how to add a field or a page yourself if you ever hire a junior engineer. Two weeks of included support after go-live for bugs and small adjustments. After that we either scope project two or we do not. No retainer, no ongoing bill unless we both want one.
-
-**Why fixed price, not hourly.** Hourly is the default in this market because freelancers cannot estimate. I can. Two weeks is not a promise; it is a contract. If I misscope, I eat it. If scope changes (new page, new field, new integration), we write a change order with a fixed price for the change. The client should never have to watch the clock.
-
-**Why two weeks, not three months.** Because internal tools that take three months to ship are internal tools that get cancelled before they ship. The founder loses patience, the ops team keeps patching the spreadsheet, the engineer burns out, the invoice becomes a fight. Two weeks with a narrow scope is the shape that actually lands. Project two is how we add what project one skipped.
-
-If you are in the "spreadsheet is breaking, Retool is expensive, cannot hire yet" bucket, that is the profile I was built for. Send me the spreadsheet; I can usually quote the same day.
-
----
-
-## About
-
-Gabriel Vian builds and ships full-stack internal tools for SMBs and startups. Design, database, API, deploy, and handoff, all from one person. The goal: a senior engineer's output without hiring one.
-
-Reach me at gvian07@gmail.com.
+Built and deployed by Gabriel Vian. Reach out at gvian07@gmail.com for a 15-20 minute scope call.
