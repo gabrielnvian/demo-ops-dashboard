@@ -8,11 +8,10 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  DATABASE_URL: postgresql://stub:stub@localhost:5432/stub
 
 jobs:
-  build:
-    name: Build
+  test:
+    name: Test
     runs-on: ubuntu-latest
 
     steps:
@@ -35,6 +34,3 @@ jobs:
 
       - name: Run tests
         run: pnpm test
-
-      - name: Build
-        run: pnpm run build

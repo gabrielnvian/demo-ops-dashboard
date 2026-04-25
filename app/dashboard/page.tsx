@@ -1,35 +1,10 @@
+import { Suspense } from "react";
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { SEED_ORDERS } from "@/lib/seed-data";
 import OrdersList, { type SeedOrder } from "./orders-list";
 
-export const dynamic = "force-dynamic";
-
-export default async function DashboardPage({
-  searchParams,
-}: {
-  searchParams?: { q?: string; status?: string; imported?: string };
-}) {
-  const q = searchParams?.q?.trim() ?? "";
-  const statusFilter = searchParams?.status?.trim() ?? "";
-
-  // Seed data lives in Postgres and is shared across visitors. Per-visitor
-  // uploads and manually created orders live in localStorage on the client;
-  // OrdersList merges them on mount.
-  const rows = await prisma.jobOrder.findMany({
-    orderBy: [{ createdAt: "desc" }],
-  });
-
-  // Normalize Prisma types to plain JSON so the Client Component boundary
-  // does not try to serialize Date objects.
-  const seedOrders: SeedOrder[] = rows.map((r) => ({
-    id: r.id,
-    title: r.title,
-    customer: r.customer,
-    status: r.status,
-    dueAt: r.dueAt ? r.dueAt.toISOString() : null,
-    notes: r.notes,
-    createdAt: r.createdAt.toISOString(),
-  }));
+export default function DashboardPage() {
+  const seedOrders: SeedOrder[] = SEED_ORDERS;
 
   return (
     <main id="main-content" className="min-h-screen bg-slate-50">
@@ -47,8 +22,8 @@ export default async function DashboardPage({
               Job orders
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-700">
-              Seed rows are SSR&apos;d from PostgreSQL. Rows you upload or
-              create in this demo are saved to your browser only.
+              Seed rows are embedded statically. Rows you upload or create in
+              this demo are saved to your browser only.
             </p>
           </div>
           {/* New-order button is rendered inside OrdersList so it can open
@@ -56,17 +31,18 @@ export default async function DashboardPage({
               level. */}
         </div>
 
-        <OrdersList
-          seedOrders={seedOrders}
-          initialQuery={q}
-          initialStatus={statusFilter}
-        />
+        <Suspense fallback={<div className="py-10 text-center text-sm text-slate-600">Loading orders...</div>}>
+          <OrdersList
+            seedOrders={seedOrders}
+            initialQuery=""
+            initialStatus=""
+          />
+        </Suspense>
 
         <p className="mt-8 text-xs text-slate-600">
-          Seeded sample data is live from PostgreSQL. Uploaded rows and rows
-          created via &ldquo;+ New order&rdquo; are stored in your browser&apos;s
-          localStorage and never leave your machine. In production, the
-          upload path writes to the same Postgres the seed reads from.
+          Seeded sample data is embedded in the static build. Uploaded rows and
+          rows created via &ldquo;+ New order&rdquo; are stored in your
+          browser&apos;s localStorage and never leave your machine.
         </p>
       </div>
     </main>

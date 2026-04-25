@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import type { JobStatus } from "@prisma/client";
+import { parseCsvUpload, type ParsedUpload } from "@/lib/parse-csv-upload";
 import { addLocalOrdersFromMapped } from "@/lib/local-orders";
 import {
   CUSTOMER_MAX,
@@ -21,15 +22,8 @@ type MappedRow = {
   notes: string | null;
 };
 
-type PreviewResponse = {
-  columns: string[];
-  preview: Array<Record<string, string>>;
-  rowCount: number;
-  mappableCount: number;
-  mappedRows: MappedRow[];
-};
+type PreviewResponse = ParsedUpload;
 
-const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS_HINT = 500;
 
 export default function UploadPage() {
@@ -50,29 +44,18 @@ export default function UploadPage() {
 
   const handleFile = useCallback(async (file: File) => {
     setError(null);
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setError("Please upload a .csv file.");
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      setError("File is too big. Max 5 MB.");
-      return;
-    }
     setLoading(true);
     setFileName(file.name);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Upload failed.");
+      const result = await parseCsvUpload(file, file.name, file.size);
+      if ("error" in result) {
+        setError(result.error);
         setPreview(null);
       } else {
-        setPreview(data);
+        setPreview(result);
       }
-    } catch (err) {
-      setError("Network error. Try again.");
+    } catch {
+      setError("Could not read file. Try again.");
     } finally {
       setLoading(false);
     }
@@ -93,9 +76,9 @@ export default function UploadPage() {
     setCommitting(true);
     setError(null);
     try {
-      // Sanitize on the client before writing to localStorage. The server
-      // already ran the column-mapping pass, so here we just enforce
-      // length caps and refuse embedded <script>/<iframe>.
+      // Sanitize on the client before writing to localStorage. The column
+      // mapping pass already ran, so here we just enforce length caps and
+      // refuse embedded <script>/<iframe>.
       const cleaned: Array<Omit<MappedRow, never>> = [];
       for (const r of preview.mappedRows) {
         const title = sanitizeText(r.title, TITLE_MAX);
@@ -105,7 +88,7 @@ export default function UploadPage() {
         cleaned.push({
           title,
           customer,
-          status: r.status,
+          status: r.status as JobStatus,
           dueAt: r.dueAt,
           notes: notes || null,
         });

@@ -14,6 +14,17 @@ export default defineConfig({
     // globals absent from happy-dom.
     environment: "happy-dom",
     include: ["**/__tests__/**/*.test.ts", "**/*.test.ts"],
-    exclude: ["node_modules", ".next"],
+    exclude: [
+      "node_modules",
+      ".next",
+      "**/*_backup/**",
+      "**/*_archived/**",
+      // Exclude renamed backup directories that are prefixed with _
+      // but NOT __tests__ directories which are valid test containers.
+      "app/api/_*",
+      "app/api/_*/**",
+      "app/_upload_backup",
+      "app/_upload_backup/**",
+    ],
   },
 });

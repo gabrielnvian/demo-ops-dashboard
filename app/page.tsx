@@ -1,15 +1,8 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { SEED_COUNTS } from "@/lib/seed-data";
 
-export const dynamic = "force-dynamic";
-
-export default async function Home() {
-  const [total, pending, inProgress, completed] = await Promise.all([
-    prisma.jobOrder.count(),
-    prisma.jobOrder.count({ where: { status: "PENDING" } }),
-    prisma.jobOrder.count({ where: { status: "IN_PROGRESS" } }),
-    prisma.jobOrder.count({ where: { status: "COMPLETED" } }),
-  ]);
+export default function Home() {
+  const { total, pending, inProgress, completed } = SEED_COUNTS;
 
   return (
     <main id="main-content" className="min-h-screen bg-white text-slate-900">

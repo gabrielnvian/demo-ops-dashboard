@@ -134,9 +134,15 @@ export default function OrdersList({
     });
   }, [localOrders, seedOrders]);
 
-  const q = initialQuery.toLowerCase();
+  // Read filter state from the URL on the client side. Fall back to the
+  // server-passed props during SSR (which will be empty strings in static
+  // export mode). This keeps filtering fully client-driven.
+  const activeQuery = (searchParams?.get("q") ?? initialQuery).trim();
+  const activeStatus = (searchParams?.get("status") ?? initialStatus).trim();
+
+  const q = activeQuery.toLowerCase();
   const filtered = merged.filter((r) => {
-    if (initialStatus && r.status !== initialStatus) return false;
+    if (activeStatus && r.status !== activeStatus) return false;
     if (!q) return true;
     return (
       r.title.toLowerCase().includes(q) ||
@@ -216,7 +222,7 @@ export default function OrdersList({
 
       <form
         className="mb-6 flex flex-wrap gap-3"
-        action="/dashboard"
+        action="/demo-ops-dashboard/dashboard"
         role="search"
         aria-label="Filter orders"
       >
@@ -227,7 +233,7 @@ export default function OrdersList({
           id="filter-q"
           type="text"
           name="q"
-          defaultValue={initialQuery}
+          defaultValue={activeQuery}
           placeholder="Search by title, customer, or notes..."
           className="flex-1 min-w-[220px] rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-500 focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700"
         />
@@ -237,7 +243,7 @@ export default function OrdersList({
         <select
           id="filter-status"
           name="status"
-          defaultValue={initialStatus}
+          defaultValue={activeStatus}
           className="rounded-md border border-slate-400 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-700"
         >
           <option value="">All statuses ({merged.length})</option>
@@ -260,7 +266,7 @@ export default function OrdersList({
         >
           Apply
         </button>
-        {(initialQuery || initialStatus) && (
+        {(activeQuery || activeStatus) && (
           <Link
             href="/dashboard"
             aria-label="Clear search and status filters"
